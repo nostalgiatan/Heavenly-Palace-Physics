@@ -444,3 +444,178 @@ if (CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
 		endif()
 	endif()
 endif()
+
+# Add custom benchmark targets if performance test is available
+if (TARGET_PERFORMANCE_TEST AND TARGET PerformanceTest)
+	# Find Python for benchmark tracking
+	find_package(Python3 COMPONENTS Interpreter)
+	
+	# Create benchmark results directory
+	file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results)
+	
+	# Benchmark tracking script path
+	set(BENCHMARK_TRACKER_SCRIPT ${PHYSICS_REPO_ROOT}/Scripts/benchmark_tracker.py)
+	
+	# Custom benchmark targets
+	if (Python3_FOUND)
+		# Set baseline benchmarks
+		add_custom_target(benchmark-baseline-convex
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} baseline 
+				--scene ConvexVsMesh --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Setting ConvexVsMesh benchmark baseline"
+		)
+		
+		add_custom_target(benchmark-baseline-ragdoll
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} baseline 
+				--scene Ragdoll --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Setting Ragdoll benchmark baseline"
+		)
+		
+		add_custom_target(benchmark-baseline-pyramid
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} baseline 
+				--scene Pyramid --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Setting Pyramid benchmark baseline"
+		)
+		
+		# Regression check targets
+		add_custom_target(benchmark-check-convex
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} check 
+				--scene ConvexVsMesh --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Checking ConvexVsMesh benchmark for regressions"
+		)
+		
+		add_custom_target(benchmark-check-ragdoll
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} check 
+				--scene Ragdoll --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Checking Ragdoll benchmark for regressions"
+		)
+		
+		add_custom_target(benchmark-check-pyramid
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} check 
+				--scene Pyramid --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Checking Pyramid benchmark for regressions"
+		)
+		
+		# Combined targets
+		add_custom_target(benchmark-baseline-all
+			DEPENDS benchmark-baseline-convex benchmark-baseline-ragdoll benchmark-baseline-pyramid
+			COMMENT "Setting all benchmark baselines"
+		)
+		
+		add_custom_target(benchmark-check-all
+			DEPENDS benchmark-check-convex benchmark-check-ragdoll benchmark-check-pyramid
+			COMMENT "Checking all benchmarks for regressions"
+		)
+		
+		# Quick benchmark report
+		add_custom_target(benchmark-report
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} report 
+				--scene ConvexVsMesh --build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--build-type ${CMAKE_BUILD_TYPE} --results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			DEPENDS PerformanceTest
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Generating benchmark report for ConvexVsMesh"
+		)
+		
+		# Benchmark history
+		add_custom_target(benchmark-history
+			COMMAND ${Python3_EXECUTABLE} ${BENCHMARK_TRACKER_SCRIPT} history 
+				--build-dir ${CMAKE_CURRENT_BINARY_DIR}
+				--results-dir ${CMAKE_CURRENT_BINARY_DIR}/benchmark-results
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Showing benchmark history"
+		)
+	endif()
+	
+	# Create CTest targets for benchmarks (if CTest is enabled)
+	if (CMAKE_TESTING_ENABLED OR BUILD_TESTING)
+		# Basic performance tests
+		add_test(NAME PerformanceTest_ConvexVsMesh
+			COMMAND PerformanceTest -s=ConvexVsMesh -i=100 -q=LinearCast -t=1
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		)
+		
+		add_test(NAME PerformanceTest_Ragdoll
+			COMMAND PerformanceTest -s=Ragdoll -i=100 -q=LinearCast -t=1
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		)
+		
+		add_test(NAME PerformanceTest_Pyramid
+			COMMAND PerformanceTest -s=Pyramid -i=100 -q=LinearCast -t=1
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		)
+		
+		# Set test properties
+		set_tests_properties(PerformanceTest_ConvexVsMesh PROPERTIES 
+			TIMEOUT 300
+			LABELS "performance;benchmark"
+		)
+		
+		set_tests_properties(PerformanceTest_Ragdoll PROPERTIES 
+			TIMEOUT 300
+			LABELS "performance;benchmark"
+		)
+		
+		set_tests_properties(PerformanceTest_Pyramid PROPERTIES 
+			TIMEOUT 300
+			LABELS "performance;benchmark"
+		)
+	endif()
+endif()
+
+# Enhanced testing configuration
+if (TARGET UnitTests)
+	# Add custom test categories
+	if (CMAKE_TESTING_ENABLED OR BUILD_TESTING)
+		# Create test categories with labels
+		set_tests_properties(UnitTests PROPERTIES 
+			LABELS "unit;core"
+			TIMEOUT 600
+		)
+		
+		# Add memory testing if valgrind is available
+		find_program(VALGRIND_EXECUTABLE valgrind)
+		if (VALGRIND_EXECUTABLE AND NOT WIN32)
+			add_test(NAME UnitTests_Valgrind
+				COMMAND ${VALGRIND_EXECUTABLE} --tool=memcheck --leak-check=full 
+					--show-leak-kinds=all --track-origins=yes --error-exitcode=1 
+					$<TARGET_FILE:UnitTests>
+				WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			)
+			
+			set_tests_properties(UnitTests_Valgrind PROPERTIES 
+				LABELS "memory;valgrind"
+				TIMEOUT 1800  # Memory tests take longer
+			)
+		endif()
+		
+		# Add stress testing targets
+		add_test(NAME UnitTests_Stress
+			COMMAND UnitTests --case="*" --no-breaks
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+		)
+		
+		set_tests_properties(UnitTests_Stress PROPERTIES 
+			LABELS "stress;extended"
+			TIMEOUT 1200
+		)
+	endif()
+endif()
