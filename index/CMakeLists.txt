@@ -29,8 +29,24 @@ set(HEAVENLY_PALACE_JOLT_HEADERS
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Jolt/JoltPhysicsBody.h
 )
 
+# Box2D implementation headers
+set(HEAVENLY_PALACE_BOX2D_HEADERS
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsSystem.h
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsWorld.h
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.h
+)
+
+# Box2D implementation sources
+set(HEAVENLY_PALACE_BOX2D_SOURCES
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsSystem.cpp
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsWorld.cpp
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.cpp
+)
+
 # Add all files to the library sources
 list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_JOLT_HEADERS})
+list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_BOX2D_HEADERS})
+list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_BOX2D_SOURCES})
 
 # Create interface library for headers only (until we implement the Jolt backend)
 add_library(HeavenlyPalacePhysics INTERFACE)
@@ -39,6 +55,22 @@ add_library(HeavenlyPalacePhysics INTERFACE)
 target_include_directories(HeavenlyPalacePhysics INTERFACE
     ${HEAVENLY_PALACE_PHYSICS_ROOT}
 )
+
+# Check if Box2D is available as a submodule
+set(BOX2D_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../ThirdParty/box2d)
+if(EXISTS ${BOX2D_ROOT}/CMakeLists.txt)
+    # Add Box2D subdirectory
+    add_subdirectory(${BOX2D_ROOT} box2d EXCLUDE_FROM_ALL)
+    
+    # Link against Box2D when available
+    if(TARGET box2d)
+        target_link_libraries(HeavenlyPalacePhysics INTERFACE box2d)
+        target_compile_definitions(HeavenlyPalacePhysics INTERFACE HEAVENLY_PALACE_BOX2D_ENABLED)
+        message(STATUS "Box2D support enabled")
+    endif()
+else()
+    message(STATUS "Box2D not found, Box2D backend will be disabled")
+endif()
 
 # Link against Jolt Physics when available
 if(TARGET Jolt)
@@ -52,6 +84,8 @@ target_compile_features(HeavenlyPalacePhysics INTERFACE cxx_std_17)
 source_group("Header Files" FILES ${HEAVENLY_PALACE_HEADERS})
 source_group("Source Files" FILES ${HEAVENLY_PALACE_SOURCES})
 source_group("Header Files\\Jolt" FILES ${HEAVENLY_PALACE_JOLT_HEADERS})
+source_group("Header Files\\Box2D" FILES ${HEAVENLY_PALACE_BOX2D_HEADERS})
+source_group("Source Files\\Box2D" FILES ${HEAVENLY_PALACE_BOX2D_SOURCES})
 
 # Make the headers available to parent projects
 set(HEAVENLY_PALACE_PHYSICS_INCLUDE_DIR ${HEAVENLY_PALACE_PHYSICS_ROOT} PARENT_SCOPE)
@@ -63,6 +97,9 @@ if(ENABLE_INSTALL)
     )
     install(FILES ${HEAVENLY_PALACE_JOLT_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/HeavenlyPalacePhysics/Jolt
+    )
+    install(FILES ${HEAVENLY_PALACE_BOX2D_HEADERS}
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/HeavenlyPalacePhysics/Box2D
     )
 endif()
 

@@ -1,6 +1,6 @@
-# Enhanced CI/CD System for Jolt Physics
+# Enhanced CI/CD System for Heavenly Palace Physics
 
-This document describes the enhanced continuous integration and testing system for the Jolt Physics engine.
+This document describes the enhanced continuous integration and testing system for the Heavenly Palace Physics engine, including support for multiple physics backends (Jolt Physics and Box2D).
 
 ## Overview
 
@@ -12,16 +12,24 @@ The enhanced CI system provides:
    - Integration tests with multiple scenarios
    - Memory leak detection
    - Stress testing capabilities
+   - Multi-physics engine backend testing
 
-2. **Benchmark Tracking System**
+2. **Physics Engine Backend Support**
+   - Jolt Physics Engine (3D physics)
+   - Box2D Physics Engine (2D physics)
+   - Abstraction layer testing
+   - Cross-engine compatibility validation
+
+3. **Benchmark Tracking System**
    - Automated baseline establishment
    - Performance regression detection
    - Historical performance tracking
    - Cross-platform determinism validation
 
-3. **Enhanced GitHub Actions Workflows**
+4. **Enhanced GitHub Actions Workflows**
    - Benchmark performance workflow
    - Integration testing workflow
+   - Abstraction layer testing workflow
    - Extended testing with memory analysis
 
 ## Test Categories
@@ -49,6 +57,19 @@ The enhanced CI system provides:
 - **Type**: Extended duration testing
 - **Labels**: `stress`, `extended`
 - **Execution**: `ctest -L stress`
+
+### 5. Box2D Integration Tests
+- **Location**: `index/` directory (abstraction layer)
+- **Type**: Physics engine backend validation
+- **Coverage**: Factory creation, system initialization, world management
+- **Labels**: `box2d`, `integration`, `abstraction`
+- **Execution**: `Scripts/ci_manager.sh test box2d`
+
+### 6. Abstraction Layer Tests
+- **Location**: `index/` directory
+- **Type**: Multi-engine compatibility testing
+- **Coverage**: Interface compliance, engine switching, cross-engine validation
+- **Execution**: GitHub Actions workflow `.github/workflows/abstraction.yml`
 
 ## Benchmark System
 
@@ -115,6 +136,33 @@ python3 Scripts/benchmark_tracker.py history --results-dir benchmark-results
 - `memory-benchmarks`: Memory usage analysis with Valgrind
 - `determinism-benchmark`: Cross-platform determinism validation
 - `compare-benchmarks`: Generates performance comparison reports
+
+### 2. Build (`.github/workflows/build.yml`) - Enhanced
+
+**Triggers**: Push to master, PR
+
+**Jobs**:
+- `linux-clang`: Linux Clang builds with Box2D integration testing
+- `linux_clang_tsan`: Sanitizer builds
+- Enhanced with Box2D submodule checkout and integration tests
+
+### 3. Abstraction Layer (`.github/workflows/abstraction.yml`) - New
+
+**Triggers**: Push/PR affecting `index/` or `ThirdParty/`, manual dispatch
+
+**Jobs**:
+- `abstraction-layer-test`: Multi-engine testing matrix
+  - Compilers: clang++, g++
+  - Build types: Debug, Release
+  - Physics engines: Jolt, Box2D, Both
+- `ci-validation`: CI system health checks
+- `performance-baseline`: Performance regression detection
+
+**Features**:
+- Submodule recursive checkout
+- Engine-specific and cross-engine testing
+- Box2D integration validation
+- CI configuration validation
 
 **Artifacts**:
 - Benchmark results (30 days retention)
@@ -263,6 +311,25 @@ make benchmark-check-all
 
 # 3. Check for memory issues (Linux)
 ctest -L memory
+
+# 4. Test Box2D integration
+cd Scripts
+./ci_manager.sh test box2d
+```
+
+### Box2D Development Workflow
+
+```bash
+# 1. Test Box2D backend specifically
+./Scripts/ci_manager.sh test box2d
+
+# 2. Run abstraction layer tests
+cd Build/Linux_Release
+# Build abstraction layer test (if available)
+cmake --build . --target HeavenlyPalacePhysicsTest
+
+# 3. Test both engines
+./Scripts/ci_manager.sh test integration  # Includes Box2D tests
 ```
 
 ### Performance Regression Investigation

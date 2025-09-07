@@ -28,8 +28,10 @@ jobs:
             double_precision: [No, Yes]
 
     steps:
-    - name: Checkout Code
+    - name: Checkout Code with Submodules
       uses: actions/checkout@v5
+      with:
+        submodules: recursive
     - name: Install Vulkan
       run: ${{github.workspace}}/Build/ubuntu24_install_vulkan_sdk.sh
     - name: Configure CMake
@@ -40,6 +42,23 @@ jobs:
     - name: Test
       working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
       run: ctest --output-on-failure --verbose
+    - name: Test Box2D Integration
+      if: matrix.build_type == 'Release' && matrix.double_precision == 'No'
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== Box2D Integration Test ==="
+        clang++ -std=c++17 \
+          -I${{github.workspace}}/index \
+          -I${{github.workspace}}/ThirdParty/box2d/include \
+          ${{github.workspace}}/index/test_box2d_integration.cpp \
+          ${{github.workspace}}/index/Box2D/Box2DPhysicsSystem.cpp \
+          ${{github.workspace}}/index/Box2D/Box2DPhysicsWorld.cpp \
+          ${{github.workspace}}/index/Box2D/Box2DPhysicsBody.cpp \
+          ${{github.workspace}}/index/HeavenlyPalacePhysics.cpp \
+          ${{github.workspace}}/index/Common.cpp \
+          ./HeavenlyPalacePhysics/box2d/src/libbox2d.a \
+          -o test_box2d_integration
+        ./test_box2d_integration
 
   linux_clang_tsan:
     runs-on: ubuntu-24.04
