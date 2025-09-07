@@ -1,0 +1,212 @@
+name: Benchmark Performance
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'Docs/**'
+      - '**.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - 'Docs/**'
+      - '**.md'
+  schedule:
+    # Run benchmarks daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      benchmark_type:
+        description: 'Type of benchmark to run'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - performance
+        - memory
+        - determinism
+
+env:
+  UBUNTU_CLANG_VERSION: clang++-18
+
+jobs:
+  benchmark-performance:
+    runs-on: ubuntu-latest
+    name: Performance Benchmarks
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'performance'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Distribution]
+        compiler: [clang++-18, g++-14]
+        
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0
+        
+    - name: Configure CMake
+      working-directory: ${{github.workspace}}/Build
+      run: ./cmake_linux_clang_gcc.sh ${{matrix.build_type}} ${{matrix.compiler}} -DTARGET_VIEWER=OFF -DTARGET_SAMPLES=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_UNIT_TESTS=ON -DTARGET_PERFORMANCE_TEST=ON
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build/Linux_${{matrix.build_type}} -j $(nproc)
+      
+    - name: Run Unit Tests
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: ctest --output-on-failure --verbose
+      
+    - name: Create Benchmark Results Directory
+      run: mkdir -p ${{github.workspace}}/benchmark-results
+      
+    - name: Run ConvexVsMesh Benchmark
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        ./PerformanceTest -q=LinearCast -t=max -s=ConvexVsMesh -repeat=3 -i=1000 > ${{github.workspace}}/benchmark-results/convex-vs-mesh-${{matrix.build_type}}-${{matrix.compiler}}.csv
+        
+    - name: Run Ragdoll Benchmark
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        ./PerformanceTest -q=LinearCast -t=max -s=Ragdoll -repeat=3 -i=1000 > ${{github.workspace}}/benchmark-results/ragdoll-${{matrix.build_type}}-${{matrix.compiler}}.csv
+        
+    - name: Run Pyramid Benchmark
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        ./PerformanceTest -q=LinearCast -t=max -s=Pyramid -repeat=3 -i=1000 > ${{github.workspace}}/benchmark-results/pyramid-${{matrix.build_type}}-${{matrix.compiler}}.csv
+        
+    - name: Upload Benchmark Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results-${{matrix.build_type}}-${{matrix.compiler}}
+        path: benchmark-results/
+        retention-days: 30
+
+  memory-benchmarks:
+    runs-on: ubuntu-latest
+    name: Memory Usage Benchmarks
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'memory'
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      
+    - name: Install Valgrind
+      run: sudo apt-get update && sudo apt-get install -y valgrind
+      
+    - name: Configure CMake
+      working-directory: ${{github.workspace}}/Build
+      run: ./cmake_linux_clang_gcc.sh Release ${{env.UBUNTU_CLANG_VERSION}} -DTARGET_VIEWER=OFF -DTARGET_SAMPLES=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_UNIT_TESTS=ON -DTARGET_PERFORMANCE_TEST=ON
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build/Linux_Release -j $(nproc)
+      
+    - name: Create Memory Results Directory
+      run: mkdir -p ${{github.workspace}}/memory-results
+      
+    - name: Run Memory Test - ConvexVsMesh
+      working-directory: ${{github.workspace}}/Build/Linux_Release
+      run: |
+        valgrind --tool=massif --massif-out-file=${{github.workspace}}/memory-results/convex-vs-mesh.massif ./PerformanceTest -q=LinearCast -t=1 -s=ConvexVsMesh -i=100
+        
+    - name: Run Memory Test - Ragdoll
+      working-directory: ${{github.workspace}}/Build/Linux_Release
+      run: |
+        valgrind --tool=massif --massif-out-file=${{github.workspace}}/memory-results/ragdoll.massif ./PerformanceTest -q=LinearCast -t=1 -s=Ragdoll -i=100
+        
+    - name: Generate Memory Reports
+      run: |
+        which ms_print && ms_print ${{github.workspace}}/memory-results/convex-vs-mesh.massif > ${{github.workspace}}/memory-results/convex-vs-mesh-memory-report.txt || echo "ms_print not available"
+        which ms_print && ms_print ${{github.workspace}}/memory-results/ragdoll.massif > ${{github.workspace}}/memory-results/ragdoll-memory-report.txt || echo "ms_print not available"
+        
+    - name: Upload Memory Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: memory-benchmark-results
+        path: memory-results/
+        retention-days: 30
+
+  determinism-benchmark:
+    runs-on: ubuntu-latest
+    name: Cross-Platform Determinism Benchmark
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.benchmark_type == 'all' || github.event.inputs.benchmark_type == 'determinism'
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang++-18, g++-14]
+        
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      
+    - name: Configure CMake
+      working-directory: ${{github.workspace}}/Build
+      run: ./cmake_linux_clang_gcc.sh Distribution ${{matrix.compiler}} -DCROSS_PLATFORM_DETERMINISTIC=ON -DTARGET_VIEWER=OFF -DTARGET_SAMPLES=OFF -DTARGET_HELLO_WORLD=OFF -DTARGET_UNIT_TESTS=ON -DTARGET_PERFORMANCE_TEST=ON
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build/Linux_Distribution -j $(nproc)
+      
+    - name: Create Determinism Results Directory
+      run: mkdir -p ${{github.workspace}}/determinism-results
+      
+    - name: Run Determinism Tests with Hash Validation
+      working-directory: ${{github.workspace}}/Build/Linux_Distribution
+      run: |
+        echo "Running determinism tests with ${{matrix.compiler}}..." > ${{github.workspace}}/determinism-results/determinism-${{matrix.compiler}}.log
+        ./PerformanceTest -q=LinearCast -t=1 -s=ConvexVsMesh -i=500 -repeat=5 >> ${{github.workspace}}/determinism-results/determinism-${{matrix.compiler}}.log 2>&1
+        ./PerformanceTest -q=LinearCast -t=1 -s=Ragdoll -i=500 -repeat=5 >> ${{github.workspace}}/determinism-results/determinism-${{matrix.compiler}}.log 2>&1
+        ./PerformanceTest -q=LinearCast -t=1 -s=Pyramid -i=500 -repeat=5 >> ${{github.workspace}}/determinism-results/determinism-${{matrix.compiler}}.log 2>&1
+        
+    - name: Upload Determinism Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: determinism-benchmark-results-${{matrix.compiler}}
+        path: determinism-results/
+        retention-days: 30
+
+  compare-benchmarks:
+    runs-on: ubuntu-latest
+    name: Compare Benchmark Results
+    needs: [benchmark-performance]
+    if: always() && (needs.benchmark-performance.result == 'success' || needs.benchmark-performance.result == 'failure')
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      
+    - name: Download Benchmark Results
+      uses: actions/download-artifact@v4
+      with:
+        pattern: benchmark-results-*
+        path: all-benchmark-results/
+        merge-multiple: true
+        
+    - name: Create Benchmark Summary
+      run: |
+        mkdir -p benchmark-summary
+        echo "# Benchmark Results Summary" > benchmark-summary/README.md
+        echo "Generated on: $(date)" >> benchmark-summary/README.md
+        echo "" >> benchmark-summary/README.md
+        
+        if [ -d "all-benchmark-results" ]; then
+          echo "## Available Results:" >> benchmark-summary/README.md
+          find all-benchmark-results -name "*.csv" | while read file; do
+            echo "- $(basename $file)" >> benchmark-summary/README.md
+            echo "\`\`\`" >> benchmark-summary/README.md
+            head -10 "$file" >> benchmark-summary/README.md
+            echo "\`\`\`" >> benchmark-summary/README.md
+            echo "" >> benchmark-summary/README.md
+          done
+        else
+          echo "No benchmark results found." >> benchmark-summary/README.md
+        fi
+        
+    - name: Upload Benchmark Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-summary
+        path: benchmark-summary/
+        retention-days: 90

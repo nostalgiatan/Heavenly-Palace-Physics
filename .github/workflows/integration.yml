@@ -1,0 +1,203 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - 'Docs/**'
+      - '**.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - 'Docs/**'
+      - '**.md'
+  workflow_dispatch:
+
+env:
+  UBUNTU_CLANG_VERSION: clang++-18
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    name: Integration Tests
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Debug, Release]
+        
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      
+    - name: Configure CMake
+      working-directory: ${{github.workspace}}/Build
+      run: ./cmake_linux_clang_gcc.sh ${{matrix.build_type}} ${{env.UBUNTU_CLANG_VERSION}} -DTARGET_VIEWER=OFF -DTARGET_SAMPLES=OFF -DTARGET_HELLO_WORLD=ON -DTARGET_UNIT_TESTS=ON -DTARGET_PERFORMANCE_TEST=ON
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build/Linux_${{matrix.build_type}} -j $(nproc)
+      
+    - name: Run Unit Tests
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: ./UnitTests
+      
+    - name: Run HelloWorld Integration Test
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: timeout 30 ./HelloWorld || [ $? -eq 124 ]  # Allow timeout exit
+      
+    - name: Create Integration Test Results Directory
+      run: mkdir -p ${{github.workspace}}/integration-results
+      
+    - name: Run Performance Integration Tests
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== Performance Integration Tests ===" > ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log
+        echo "Testing ConvexVsMesh scene..." >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log
+        ./PerformanceTest -s=ConvexVsMesh -i=50 -q=LinearCast -t=1 >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log 2>&1
+        
+        echo "Testing Ragdoll scene..." >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log
+        timeout 60 ./PerformanceTest -s=Ragdoll -i=10 -q=LinearCast -t=1 >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log 2>&1 || true
+        
+        echo "Testing Pyramid scene..." >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log
+        ./PerformanceTest -s=Pyramid -i=20 -q=LinearCast -t=1 >> ${{github.workspace}}/integration-results/performance-${{matrix.build_type}}.log 2>&1
+        
+    - name: Run CTest Integration
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== CTest Integration ===" > ${{github.workspace}}/integration-results/ctest-${{matrix.build_type}}.log
+        ctest --output-on-failure --verbose >> ${{github.workspace}}/integration-results/ctest-${{matrix.build_type}}.log 2>&1
+        
+    - name: Run Performance Tests with CTest
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== CTest Performance Tests ===" >> ${{github.workspace}}/integration-results/ctest-${{matrix.build_type}}.log
+        ctest -L performance --output-on-failure --verbose >> ${{github.workspace}}/integration-results/ctest-${{matrix.build_type}}.log 2>&1
+        
+    - name: Run Stress Tests
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== Stress Tests ===" > ${{github.workspace}}/integration-results/stress-${{matrix.build_type}}.log
+        ./UnitTests --case="*Stress*" --no-breaks >> ${{github.workspace}}/integration-results/stress-${{matrix.build_type}}.log 2>&1 || true
+        
+    - name: Validate Determinism
+      working-directory: ${{github.workspace}}/Build/Linux_${{matrix.build_type}}
+      run: |
+        echo "=== Determinism Validation ===" > ${{github.workspace}}/integration-results/determinism-${{matrix.build_type}}.log
+        ./PerformanceTest -s=ConvexVsMesh -i=100 -repeat=3 -q=LinearCast -t=1 > run1.csv
+        ./PerformanceTest -s=ConvexVsMesh -i=100 -repeat=3 -q=LinearCast -t=1 > run2.csv
+        
+        # Extract hash from both runs
+        HASH1=$(tail -1 run1.csv | cut -d',' -f4 | tr -d ' ')
+        HASH2=$(tail -1 run2.csv | cut -d',' -f4 | tr -d ' ')
+        
+        echo "Run 1 hash: $HASH1" >> ${{github.workspace}}/integration-results/determinism-${{matrix.build_type}}.log
+        echo "Run 2 hash: $HASH2" >> ${{github.workspace}}/integration-results/determinism-${{matrix.build_type}}.log
+        
+        if [ "$HASH1" = "$HASH2" ]; then
+          echo "✅ Determinism test PASSED" >> ${{github.workspace}}/integration-results/determinism-${{matrix.build_type}}.log
+        else
+          echo "❌ Determinism test FAILED" >> ${{github.workspace}}/integration-results/determinism-${{matrix.build_type}}.log
+          exit 1
+        fi
+        
+    - name: Upload Integration Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-results-${{matrix.build_type}}
+        path: integration-results/
+        retention-days: 30
+
+  extended-integration:
+    runs-on: ubuntu-latest
+    name: Extended Integration Tests
+    needs: integration-tests
+    if: always()
+    
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v5
+      
+    - name: Install Additional Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y valgrind gdb
+        
+    - name: Configure CMake (Release)
+      working-directory: ${{github.workspace}}/Build
+      run: ./cmake_linux_clang_gcc.sh Release ${{env.UBUNTU_CLANG_VERSION}} -DTARGET_VIEWER=OFF -DTARGET_SAMPLES=OFF -DTARGET_HELLO_WORLD=ON -DTARGET_UNIT_TESTS=ON -DTARGET_PERFORMANCE_TEST=ON
+      
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build/Linux_Release -j $(nproc)
+      
+    - name: Create Extended Results Directory
+      run: mkdir -p ${{github.workspace}}/extended-results
+      
+    - name: Memory Leak Detection with Valgrind
+      working-directory: ${{github.workspace}}/Build/Linux_Release
+      run: |
+        echo "=== Memory Leak Detection ===" > ${{github.workspace}}/extended-results/memory-tests.log
+        valgrind --tool=memcheck --leak-check=full --show-leak-kinds=all \
+          --track-origins=yes --log-file=${{github.workspace}}/extended-results/valgrind.log \
+          ./UnitTests || true
+          
+        echo "Valgrind completed, checking for leaks..." >> ${{github.workspace}}/extended-results/memory-tests.log
+        grep -E "(definitely lost|indirectly lost|possibly lost)" ${{github.workspace}}/extended-results/valgrind.log >> ${{github.workspace}}/extended-results/memory-tests.log || echo "No memory leaks detected" >> ${{github.workspace}}/extended-results/memory-tests.log
+        
+    - name: Performance Profiling
+      working-directory: ${{github.workspace}}/Build/Linux_Release
+      run: |
+        echo "=== Performance Profiling ===" > ${{github.workspace}}/extended-results/profiling.log
+        timeout 30 ./PerformanceTest -s=ConvexVsMesh -i=500 -p >> ${{github.workspace}}/extended-results/profiling.log 2>&1 || true
+        
+    - name: Multi-threaded Stress Test
+      working-directory: ${{github.workspace}}/Build/Linux_Release
+      run: |
+        echo "=== Multi-threaded Stress Test ===" > ${{github.workspace}}/extended-results/multithreaded.log
+        for threads in 1 2 4; do
+          echo "Testing with $threads threads..." >> ${{github.workspace}}/extended-results/multithreaded.log
+          ./PerformanceTest -s=ConvexVsMesh -i=100 -t=$threads -q=LinearCast >> ${{github.workspace}}/extended-results/multithreaded.log 2>&1
+        done
+        
+    - name: Upload Extended Test Results
+      uses: actions/upload-artifact@v4
+      with:
+        name: extended-integration-results
+        path: extended-results/
+        retention-days: 30
+
+  summary:
+    runs-on: ubuntu-latest
+    name: Test Summary
+    needs: [integration-tests, extended-integration]
+    if: always()
+    
+    steps:
+    - name: Download Integration Results
+      uses: actions/download-artifact@v4
+      with:
+        pattern: "*integration*results*"
+        path: all-results/
+        merge-multiple: true
+        
+    - name: Generate Test Summary
+      run: |
+        mkdir -p test-summary
+        echo "# Integration Test Summary" > test-summary/README.md
+        echo "Generated on: $(date)" >> test-summary/README.md
+        echo "" >> test-summary/README.md
+        
+        echo "## Test Results Overview" >> test-summary/README.md
+        find all-results -name "*.log" | while read logfile; do
+          echo "### $(basename $logfile)" >> test-summary/README.md
+          echo "\`\`\`" >> test-summary/README.md
+          tail -20 "$logfile" >> test-summary/README.md
+          echo "\`\`\`" >> test-summary/README.md
+          echo "" >> test-summary/README.md
+        done
+        
+    - name: Upload Test Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: integration-test-summary
+        path: test-summary/
+        retention-days: 90

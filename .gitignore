@@ -8,3 +8,16 @@
 /detlog.txt
 /Assets/Shaders/VK/*.spv
 /Assets/Shaders/MTL/*.metallib
+
+# Enhanced CI system artifacts
+/benchmark-results/
+/test-results/
+/integration-results/
+/memory-results/
+/extended-results/
+*.massif
+*.csv
+valgrind.log
+/.pytest_cache/
+/__pycache__/
+**/__pycache__/
