@@ -21,3 +21,21 @@ valgrind.log
 /.pytest_cache/
 /__pycache__/
 **/__pycache__/
+
+# Build artifacts and temporary files
+build*/
+/build-test/
+*.o
+*.a
+*.so
+*.exe
+test_interface
+*.obj
+*.lib
+*.dll
+*.gch
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+*.cmake
