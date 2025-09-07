@@ -3,6 +3,8 @@
 
 cmake_minimum_required(VERSION 3.20)
 
+project(HeavenlyPalacePhysics VERSION 1.0.0 LANGUAGES CXX)
+
 # Define the abstraction layer library
 set(HEAVENLY_PALACE_PHYSICS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -14,12 +16,14 @@ set(HEAVENLY_PALACE_HEADERS
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/IPhysicsWorld.h
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/IPhysicsBody.h
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/IShape.h
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/IPhysicsPlugin.h
 )
 
 # Collect source files
 set(HEAVENLY_PALACE_SOURCES
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/HeavenlyPalacePhysics.cpp
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Common.cpp
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/PhysicsPluginRegistry.cpp
 )
 
 # Jolt implementation headers
@@ -41,12 +45,20 @@ set(HEAVENLY_PALACE_BOX2D_SOURCES
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsSystem.cpp
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsWorld.cpp
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.cpp
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPlugin.cpp
+)
+
+# Jolt implementation sources
+set(HEAVENLY_PALACE_JOLT_SOURCES
+    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Jolt/JoltPlugin.cpp
+    # Additional Jolt implementation files would go here
 )
 
 # Add all files to the library sources
 list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_JOLT_HEADERS})
 list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_BOX2D_HEADERS})
 list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_BOX2D_SOURCES})
+list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_JOLT_SOURCES})
 
 # Create interface library for headers only (until we implement the Jolt backend)
 add_library(HeavenlyPalacePhysics INTERFACE)
@@ -88,7 +100,11 @@ source_group("Header Files\\Box2D" FILES ${HEAVENLY_PALACE_BOX2D_HEADERS})
 source_group("Source Files\\Box2D" FILES ${HEAVENLY_PALACE_BOX2D_SOURCES})
 
 # Make the headers available to parent projects
-set(HEAVENLY_PALACE_PHYSICS_INCLUDE_DIR ${HEAVENLY_PALACE_PHYSICS_ROOT} PARENT_SCOPE)
+if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+    set(HEAVENLY_PALACE_PHYSICS_INCLUDE_DIR ${HEAVENLY_PALACE_PHYSICS_ROOT})
+else()
+    set(HEAVENLY_PALACE_PHYSICS_INCLUDE_DIR ${HEAVENLY_PALACE_PHYSICS_ROOT} PARENT_SCOPE)
+endif()
 
 # Install the headers
 if(ENABLE_INSTALL)

@@ -8,11 +8,14 @@
 // Core types and utilities
 #include "Common.h"
 
-// Abstract interfaces
-#include "IPhysicsSystem.h"
-#include "IPhysicsWorld.h"
-#include "IPhysicsBody.h"
+// Abstract interfaces  
 #include "IShape.h"
+#include "IPhysicsBody.h"
+#include "IPhysicsWorld.h"
+#include "IPhysicsSystem.h"
+
+// Plugin system
+#include "IPhysicsPlugin.h"
 
 /// Heavenly Palace Physics provides a unified interface for physics engines
 /// allowing you to switch between different physics backends (Jolt, Bullet, PhysX)

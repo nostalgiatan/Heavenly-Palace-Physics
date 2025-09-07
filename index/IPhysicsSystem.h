@@ -3,11 +3,65 @@
 #pragma once
 
 #include "Common.h"
-#include "IPhysicsWorld.h"
-#include "IShape.h"
 #include <memory>
 
 namespace HeavenlyPalace {
+
+// Forward declarations
+class IPhysicsWorld;
+class IPhysicsBody;
+class IShape;
+class IBoxShape;
+class ISphereShape;
+class ICapsuleShape;
+class IMeshShape;
+class ICompoundShape;
+struct PluginInfo;
+class IPhysicsPlugin;
+
+/// Factory for creating physics objects
+/// This provides a unified way to create physics objects regardless of the underlying engine
+class IPhysicsFactory {
+public:
+    virtual ~IPhysicsFactory() = default;
+
+    /// Create a physics world
+    /// @return New physics world instance
+    virtual std::shared_ptr<IPhysicsWorld> CreatePhysicsWorld() = 0;
+
+    /// Create a box shape
+    /// @param halfExtents Half extents of the box (half width, half height, half depth)
+    /// @return New box shape instance
+    virtual std::shared_ptr<IBoxShape> CreateBoxShape(const Vec3& halfExtents) = 0;
+
+    /// Create a sphere shape
+    /// @param radius Radius of the sphere
+    /// @return New sphere shape instance
+    virtual std::shared_ptr<ISphereShape> CreateSphereShape(float radius) = 0;
+
+    /// Create a capsule shape
+    /// @param radius Radius of the capsule
+    /// @param height Height of the cylindrical part (excluding caps)
+    /// @return New capsule shape instance
+    virtual std::shared_ptr<ICapsuleShape> CreateCapsuleShape(float radius, float height) = 0;
+
+    /// Create a mesh shape from vertices and indices
+    /// @param vertices Array of vertex positions
+    /// @param vertexCount Number of vertices
+    /// @param indices Array of triangle indices (3 per triangle)
+    /// @param indexCount Number of indices
+    /// @return New mesh shape instance
+    virtual std::shared_ptr<IMeshShape> CreateMeshShape(const Vec3* vertices, uint32_t vertexCount,
+                                                        const uint32_t* indices, uint32_t indexCount) = 0;
+
+    /// Create a compound shape
+    /// @return New compound shape instance
+    virtual std::shared_ptr<ICompoundShape> CreateCompoundShape() = 0;
+
+    /// Get the physics engine type this factory creates
+    /// @return Physics engine type
+    virtual PhysicsEngineType GetEngineType() const = 0;
+};
 
 /// Factory for creating physics objects
 /// This provides a unified way to create physics objects regardless of the underlying engine
@@ -95,15 +149,15 @@ public:
     virtual PhysicsEngineType GetEngineType() const = 0;
 };
 
-/// Global access to the physics system
-/// This provides a singleton-like interface for easy access throughout the application
+/// Enhanced physics manager with plugin support
+/// This provides a singleton-like interface with automatic plugin management
 class PhysicsManager {
 public:
     /// Get the global physics system instance
-    /// @return Physics system instance
-    static IPhysicsSystem& GetInstance();
+    /// @return Physics system instance, nullptr if not created
+    static IPhysicsSystem* GetInstance();
 
-    /// Create and initialize the physics system
+    /// Create and initialize the physics system using plugin architecture
     /// @param engineType Type of physics engine to use
     /// @return True if creation and initialization succeeded
     static bool CreateSystem(PhysicsEngineType engineType = PhysicsEngineType::Jolt);
@@ -115,8 +169,39 @@ public:
     /// @return True if system is ready for use
     static bool IsReady();
 
+    /// Get list of all available physics engines (from plugin registry)
+    /// @param count Output parameter for number of engines
+    /// @return Array of available engine types
+    static const PhysicsEngineType* GetAvailableEngines(uint32_t& count);
+
+    /// Get plugin information for a specific engine
+    /// @param engineType Engine type to query
+    /// @return Plugin information or nullptr if not available
+    static const PluginInfo* GetEngineInfo(PhysicsEngineType engineType);
+
+    /// Switch to a different physics engine (experimental)
+    /// @param engineType New engine type to switch to
+    /// @param preserveState Whether to attempt state preservation
+    /// @return True if switch succeeded
+    static bool SwitchEngine(PhysicsEngineType engineType, bool preserveState = false);
+
+    /// Initialize all available physics engine plugins
+    /// @return True if all plugins initialized successfully
+    static bool InitializePlugins();
+
+    /// Shutdown all plugins
+    static void ShutdownPlugins();
+
+    /// Check if an engine type is supported on current platform
+    /// @param engineType Engine type to check
+    /// @return True if supported, false otherwise
+    static bool IsEngineSupported(PhysicsEngineType engineType);
+
 private:
     static std::unique_ptr<IPhysicsSystem> s_instance;
+    static std::unique_ptr<IPhysicsPlugin> s_currentPlugin;
+    static PhysicsEngineType s_currentEngineType;
+    static bool s_pluginsInitialized;
 };
 
 } // namespace HeavenlyPalace
