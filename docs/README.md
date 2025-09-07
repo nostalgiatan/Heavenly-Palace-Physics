@@ -1,42 +1,71 @@
 # Heavenly Palace Physics Documentation
 
-This directory contains documentation for the Heavenly Palace Physics project.
+This directory contains comprehensive documentation for the Heavenly Palace Physics project and its universal physics engine abstraction layer.
 
 ## Directory Structure
 
-### `api/` - Physics Engine API Documentation
-This directory contains the comprehensive documentation for the Jolt Physics Engine APIs that was previously located in the `index/` directory. This documentation has been moved here to maintain clear separation between interface code and documentation.
+### `api/` - Universal Physics Abstraction API Documentation
+This directory contains documentation for the universal physics engine abstraction layer that provides a unified interface across multiple physics engines.
 
 **Contents:**
 - `README.md` - Main API overview and navigation
 - `quick-start.md` - Complete getting started example  
-- `api-reference.md` - All 212 classes by category
+- `api-reference.md` - All abstraction layer classes by category
 - `interface-map.md` - Quick lookup and search
 - `navigation.md` - Documentation navigation guide
-- `bodies/` - Bodies & shapes documentation (120 classes)
-- `constraints/` - Constraints documentation (25 classes)
-- `core/` - Core infrastructure documentation (57 classes)
-- `physics/` - Physics system documentation (12 classes)
+- `bodies/` - Bodies & shapes documentation
+- `constraints/` - Constraints documentation
+- `core/` - Core infrastructure documentation
+- `physics/` - Physics system documentation
 
-## Migration Note
+### `jolt/` - Jolt Physics Engine Documentation
+This directory contains Jolt-specific documentation that was consolidated from the previous `Docs/` directory.
 
-**Previous Location:** `index/` directory (contained documentation only)  
-**New Location:** `docs/api/` directory  
-**New Purpose of `index/`:** Universal physics engine abstraction layer
+**Contents:**
+- `APIChanges.md` - Jolt API changes and migration guides
+- `Architecture.md` - Jolt physics engine architecture details
+- `ReleaseNotes.md` - Jolt release notes and version history
+- `Samples.md` - Jolt sample applications documentation
+- `PerformanceTest.md` - Performance testing documentation
+- `ProjectsUsingJolt.md` - List of projects using Jolt Physics
+- `CI-Testing-Guide.md` - CI/CD and testing configuration
+- `Images/` - Diagrams and visual documentation
+- Various technical diagrams and reference materials
 
-The `index/` directory has been completely transformed from a documentation-only location into a proper code abstraction layer that provides universal interfaces for physics engines. This aligns with the project's goal of creating a physics engine abstraction layer rather than just documentation.
+## Project Philosophy
 
-## Key Changes
+**Universal Physics Engine Abstraction:** The Heavenly Palace Physics project provides a unified interface for multiple physics engines, allowing developers to:
 
-1. **Documentation Moved:** All Jolt-specific API documentation moved from `index/` to `docs/api/`
-2. **Interface Layer Added:** `index/` now contains C++ headers defining abstract physics interfaces  
-3. **Engine Abstraction:** New abstraction layer supports multiple physics engines with unified API
-4. **Implementation Separation:** Clear distinction between interface (abstract) and implementation (concrete)
+1. **Write Once, Run Anywhere:** Same API regardless of underlying physics engine
+2. **Engine Flexibility:** Switch between Jolt, Bullet, PhysX, Box2D based on requirements
+3. **Plugin System:** Easy integration of new physics engines through standardized interfaces
+4. **Performance Optimization:** Choose the best engine for specific platforms or use cases
+
+## Key Changes from Original Structure
+
+1. **Documentation Consolidated:** All documentation now under single `docs/` directory
+2. **Engine-Specific Docs:** Jolt documentation moved to `docs/jolt/` subdirectory
+3. **Abstraction Focus:** Main documentation focuses on universal interface rather than specific engines
+4. **Clean Organization:** Removed duplicate directories and large unnecessary assets
+5. **Plugin Architecture:** Enhanced support for multiple physics engine backends
 
 ## Using the Documentation
 
-- **For API Reference:** Browse the `api/` directory for comprehensive Jolt Physics documentation
-- **For Abstraction Layer:** See `index/README.md` for the new universal physics interface documentation
-- **For Migration:** Existing code using Jolt directly remains unchanged; new code can use the abstraction layer
+- **For Universal API:** Start with `api/` directory for abstraction layer documentation
+- **For Jolt-Specific Features:** See `jolt/` directory for engine-specific documentation
+- **For Implementation:** See `../index/README.md` for the abstraction layer code structure
+- **For Getting Started:** Begin with `api/quick-start.md` for universal interface examples
 
-This restructuring maintains all existing documentation while enabling the creation of a proper physics engine abstraction layer as requested.
+## Migration Guide
+
+**From Direct Jolt Usage:**
+- Existing code using Jolt directly remains unchanged
+- New code can use the abstraction layer for portability
+- Gradual migration path available through compatibility interfaces
+
+**For Plugin Developers:**
+- Implement the abstract interfaces in `../index/` directory
+- Follow the patterns established by existing Jolt and Box2D implementations
+- Refer to `api/` documentation for interface specifications
+
+This restructured documentation supports the project's evolution from a Jolt-specific wrapper to a truly universal physics engine abstraction layer.

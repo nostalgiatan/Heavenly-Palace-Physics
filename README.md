@@ -1,172 +1,235 @@
-[![CLA assistant](https://cla-assistant.io/readme/badge/jrouwe/JoltPhysics)](https://cla-assistant.io/jrouwe/JoltPhysics)
-[![Build Status](https://github.com/jrouwe/JoltPhysics/actions/workflows/build.yml/badge.svg)](https://github.com/jrouwe/JoltPhysics/actions/)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=jrouwe_JoltPhysics&metric=alert_status)](https://sonarcloud.io/dashboard?id=jrouwe_JoltPhysics)
-[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=jrouwe_JoltPhysics&metric=bugs)](https://sonarcloud.io/dashboard?id=jrouwe_JoltPhysics)
-[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=jrouwe_JoltPhysics&metric=code_smells)](https://sonarcloud.io/dashboard?id=jrouwe_JoltPhysics)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=jrouwe_JoltPhysics&metric=coverage)](https://sonarcloud.io/dashboard?id=jrouwe_JoltPhysics)
+# Heavenly Palace Physics - Universal Physics Engine Abstraction
 
-# Jolt Physics
+[![Build Status](https://github.com/nostalgiatan/Heavenly-Palace-Physics/actions/workflows/build.yml/badge.svg)](https://github.com/nostalgiatan/Heavenly-Palace-Physics/actions/)
 
-A multi core friendly rigid body physics and collision detection library. Suitable for games and VR applications. Used by Horizon Forbidden West and Death Stranding 2: On the Beach.
+A universal physics engine abstraction layer that provides a unified interface for multiple physics engines, allowing developers to write physics code once and run it with different physics backends.
 
-[![Horizon Forbidden West Cover Art](https://jrouwe.nl/jolt/Horizon_Forbidden_West.png)](https://www.playstation.com/en-us/games/horizon-forbidden-west/)
-[![Death Stranding 2 Cover Art](https://jrouwe.nl/jolt/Death_Stranding_2.png)](https://www.playstation.com/en-us/games/death-stranding-2-on-the-beach/)
+## 🌟 Key Features
 
-|[![Ragdoll Pile](https://img.youtube.com/vi/pwyCW0yNKMA/hqdefault.jpg)](https://www.youtube.com/watch?v=pwyCW0yNKMA)|
-|:-|
-|*A YouTube video showing a ragdoll pile simulated with Jolt Physics.*|
+### Universal Interface
+- **Write Once, Run Anywhere:** Same API regardless of underlying physics engine
+- **Engine Independence:** Switch between Jolt, Box2D, Bullet, PhysX without code changes
+- **Plugin Architecture:** Easy integration of new physics engines through standardized interfaces
+- **Performance Flexibility:** Choose optimal engine per platform or use case
 
-For more demos and [videos](https://www.youtube.com/watch?v=pwyCW0yNKMA&list=PLYXVwtOr1CBxbA50jVg2dKUQvHW_5OOom) go to the [Samples](Docs/Samples.md) section.
+### Supported Physics Engines
+- ✅ **Jolt Physics** - High-performance 3D physics with advanced features
+- ✅ **Box2D** - Battle-tested 2D physics engine
+- 🚧 **Bullet Physics** - Comprehensive 3D physics (planned)
+- 🚧 **NVIDIA PhysX** - GPU-accelerated physics (planned)
 
-## Design considerations
+### Engine-Agnostic Features
+- Rigid body simulation with multiple motion types
+- Comprehensive shape support (box, sphere, capsule, mesh, compound)
+- Advanced collision detection and response
+- Constraint and joint systems
+- Raycast and collision queries
+- Material properties and physics materials
+- Multi-threaded simulation support
 
-Why create yet another physics engine? Firstly, it has been a personal learning project. Secondly, I wanted to address some issues that I had with existing physics engines:
+## 🚀 Quick Start
 
-* Games do more than simulating physics. These things happen across multiple threads. We emphasize on concurrently accessing physics data outside of the main simulation update:
-	* Sections of the simulation can be loaded / unloaded in the background. We prepare a batch of physics bodies on a background thread without locking or affecting the simulation. We insert the batch into the simulation with a minimal impact on performance.
-	* Collision queries can run parallel to adding / removing or updating a body. If a change to a body happened on the same thread, the change will be immediately visible. If the change happened on another thread, the query will see a consistent before or after state. An alternative would be to have a read and write version of the world. This prevents changes from being visible immediately, so we avoid this.
-	* Collision queries can run parallel to the main physics simulation. We do a coarse check (broad phase query) before the simulation step and do fine checks (narrow phase query) in the background. This way, long running processes (like navigation mesh generation) can be spread out across multiple frames.
-* Accidental wake up of bodies cause performance problems when loading / unloading content. Therefore, bodies will not automatically wake up when created. Neighboring bodies will not be woken up when bodies are removed. This can be triggered manually if desired.
-* The simulation runs deterministically. You can replicate a simulation to a remote client by merely replicating the inputs to the simulation. Read the [Deterministic Simulation](https://jrouwe.github.io/JoltPhysics/#deterministic-simulation) section to understand the limits.
-* We try to simulate behavior of rigid bodies in the real world but make approximations. Therefore, this library should mainly be used for games or VR simulations.
+### Installation
+```cmake
+# Add to your CMakeLists.txt
+add_subdirectory(path/to/Heavenly-Palace-Physics/index)
+target_link_libraries(your_target PRIVATE HeavenlyPalacePhysics)
+```
 
-## Features
+### Basic Usage
+```cpp
+#include "HeavenlyPalacePhysics.h"
+using namespace HeavenlyPalace;
 
-* Simulation of rigid bodies of various shapes using continuous collision detection:
-	* Sphere
-	* Box
-	* Capsule
-	* Tapered-capsule
-	* Cylinder
-	* Tapered-cylinder
-	* Convex hull
-	* Plane
-	* Compound
-	* Mesh (triangle)
-	* Terrain (height field)
-* Simulation of constraints between bodies:
-	* Fixed
-	* Point
-	* Distance (including springs)
-	* Hinge
-	* Slider (also called prismatic)
-	* Cone
-	* Rack and pinion
-	* Gear
-	* Pulley
-	* Smooth spline paths
-	* Swing-twist (for humanoid shoulders)
-	* 6 DOF
-* Motors to drive the constraints.
-* Collision detection:
-	* Casting rays.
-	* Testing shapes vs shapes.
-	* Casting a shape vs another shape.
-	* Broadphase only tests to quickly determine which objects may intersect.
-* Sensors (trigger volumes).
-* Animated ragdolls:
-	* Hard keying (kinematic only rigid bodies).
-	* Soft keying (setting velocities on dynamic rigid bodies).
-	* Driving constraint motors to an animated pose.
-	* Mapping a high detail (animation) skeleton onto a low detail (ragdoll) skeleton and vice versa.
-* Game character simulation (capsule)
-	* Rigid body character. Moves during the physics simulation. Cheapest option and most accurate collision response between character and dynamic bodies.
-	* Virtual character. Does not have a rigid body in the simulation but simulates one using collision checks. Updated outside of the physics update for more control. Less accurate interaction with dynamic bodies.
-* Vehicles
-	* Wheeled vehicles.
-	* Tracked vehicles.
-	* Motorcycles.
-* Soft body simulation (e.g. a soft ball or piece of cloth).
-	* Edge constraints.
-	* Dihedral bend constraints.
-	* Cosserat rod constraints (an edge with an orientation that can be used to orient geometry, e.g. a plant leaf).
-	* Tetrahedron volume constraints.
-	* Long range attachment constraints (also called tethers).
-	* Limiting the simulation to stay within a certain range of a skinned vertex.
-	* Internal pressure.
-	* Collision with simulated rigid bodies.
-	* Collision tests against soft bodies.
-* Water buoyancy calculations.
-* An optional double precision mode that allows large worlds.
+// Initialize with any supported physics engine
+if (!PhysicsManager::CreateSystem(PhysicsEngineType::Jolt)) {
+    // Handle initialization error
+    return false;
+}
 
-## Supported platforms
+// Get factory and create world
+auto* system = PhysicsManager::GetInstance();
+auto factory = system->GetFactory();
+auto world = factory->CreatePhysicsWorld();
+world->Initialize(1024, 1024, 1024);
+world->SetGravity(Vec3(0, -9.81f, 0));
 
-* Windows (Desktop or UWP) x86/x64/ARM32/ARM64
-* Linux (tested on Ubuntu) x86/x64/ARM32/ARM64/RISC-V64/LoongArch64/PowerPC64LE
-* FreeBSD
-* Android x86/x64/ARM32/ARM64
-* Platform Blue (a popular game console) x64
-* macOS x64/ARM64
-* iOS x64/ARM64
-* MSYS2 MinGW64
-* WebAssembly, see [this](https://github.com/jrouwe/JoltPhysics.js) separate project.
+// Create physics objects
+auto boxShape = factory->CreateBoxShape(Vec3(0.5f, 0.5f, 0.5f));
+BodyCreationSettings bodySettings;
+bodySettings.position = Vec3(0, 10, 0);
+bodySettings.mass = 1.0f;
+auto body = world->CreateBody(bodySettings);
+body->SetShape(boxShape);
 
-## Required CPU features
+// Run simulation
+while (running) {
+    world->Update(1.0f / 60.0f);
+    
+    // Get physics results
+    Vec3 position = body->GetPosition();
+    Quaternion rotation = body->GetRotation();
+    
+    // Update your game objects...
+}
 
-* On x86/x64 the minimal requirements are SSE2. The library can be compiled using SSE4.1, SSE4.2, AVX, AVX2, or AVX512.
-* On ARM64 the library uses NEON and FP16. On ARM32 it can be compiled without any special CPU instructions.
+// Cleanup
+PhysicsManager::DestroySystem();
+```
 
-## Documentation
+### Engine Switching
+```cpp
+// Switch engines at runtime (experimental)
+PhysicsManager::SwitchEngine(PhysicsEngineType::Box2D);
 
-To get started, look at the [HelloWorld](HelloWorld/HelloWorld.cpp) example. A [HelloWorld example using CMake FetchContent](https://github.com/jrouwe/JoltPhysicsHelloWorld) is also available to show how you can integrate Jolt Physics in a CMake project.
+// Query available engines
+uint32_t count;
+const PhysicsEngineType* engines = PhysicsManager::GetAvailableEngines(count);
 
-Every feature in Jolt has its own sample. [Running the Samples application](Docs/Samples.md) and browsing through the [code](https://github.com/jrouwe/JoltPhysics/tree/master/Samples/Tests) is a great way to learn about the library!
+// Get engine information
+const PluginInfo* info = PhysicsManager::GetEngineInfo(PhysicsEngineType::Jolt);
+if (info) {
+    std::cout << "Engine: " << info->name << " v" << info->version << std::endl;
+}
+```
 
-To learn more about Jolt go to the latest [Architecture and API documentation](https://jrouwe.github.io/JoltPhysics/). Documentation for [a specific release is also available](https://jrouwe.github.io/JoltPhysicsDocs/).
+## 📖 Documentation
 
-Some algorithms used by Jolt are described in detail in my GDC 2022 talk: Architecting Jolt Physics for 'Horizon Forbidden West' ([slides](https://gdcvault.com/play/1027560/Architecting-Jolt-Physics-for-Horizon), [slides with speaker notes](https://jrouwe.nl/architectingjolt/ArchitectingJoltPhysics_Rouwe_Jorrit_Notes.pdf), [video](https://gdcvault.com/play/1027891/Architecting-Jolt-Physics-for-Horizon)).
+- **[Universal API Documentation](docs/api/)** - Complete abstraction layer reference
+- **[Jolt Physics Documentation](docs/jolt/)** - Engine-specific Jolt documentation  
+- **[Quick Start Guide](docs/api/quick-start.md)** - Get up and running quickly
+- **[Plugin Development Guide](docs/api/plugin-development.md)** - Create your own physics engine plugins
 
-## Compiling
+## 🔌 Plugin Architecture
 
-* Compiles with Visual Studio 2019+, Clang 10+ or GCC 9+.
-* Uses C++ 17.
-* Depends only on the standard template library.
-* Doesn't use RTTI.
-* Doesn't use exceptions.
+The abstraction layer uses a sophisticated plugin system that allows:
 
-If you want to run on Platform Blue you'll need to provide your own build environment and PlatformBlue.h due to NDA requirements. This file is available on the Platform Blue developer forum.
+### Automatic Plugin Discovery
+```cpp
+// Plugins register themselves automatically
+REGISTER_PHYSICS_PLUGIN(PhysicsEngineType::MyEngine, MyEnginePlugin);
+```
 
-For build instructions go to the [Build](Build/README.md) section. When upgrading from an older version of the library go to the [Release Notes](Docs/ReleaseNotes.md) or [API Changes](Docs/APIChanges.md) sections.
+### Runtime Engine Information
+```cpp
+// Query engine capabilities
+const PluginInfo* info = PhysicsManager::GetEngineInfo(engineType);
+bool supportsSoftBodies = (info->supportedFeatures & PluginFeature::SoftBodies) != 0;
+```
 
-## Performance
+### Custom Engine Integration
+```cpp
+class MyPhysicsPlugin : public IPhysicsPlugin {
+    // Implement plugin interface for your engine
+    std::unique_ptr<IPhysicsSystem> CreatePhysicsSystem() override;
+    // ... other methods
+};
+```
 
-If you're interested in how Jolt scales with multiple CPUs and compares to other physics engines, take a look at [this document](https://jrouwe.nl/jolt/JoltPhysicsMulticoreScaling.pdf).
+## 🏗️ Architecture
 
-## Folder structure
+### Design Principles
+1. **Minimal Overhead** - Thin abstraction layer with minimal performance impact
+2. **Type Safety** - Strong typing and clear interfaces throughout
+3. **Future Extensibility** - Easy to add new physics engines and features
+4. **Engine Compatibility** - Full access to engine-specific features when needed
+5. **Plugin Isolation** - Engines are isolated and can be loaded/unloaded independently
 
-* Assets - This folder contains assets used by the TestFramework, Samples and JoltViewer.
-* Build - Contains everything needed to build the library, see the [Build](Build/README.md) section.
-* Docs - Contains documentation for the library.
-* HelloWorld - A simple application demonstrating how to use the Jolt Physics library.
-* Jolt - All source code for the library is in this folder.
-* JoltViewer - It is possible to record the output of the physics engine using the DebugRendererRecorder class (a .jor file), this folder contains the source code to an application that can visualize a recording. This is useful for e.g. visualizing the output of the PerformanceTest from different platforms. Currently available on Windows, macOS and Linux.
-* PerformanceTest - Contains a simple application that runs a [performance test](Docs/PerformanceTest.md) and collects timing information.
-* Samples - This contains the sample application, see the [Samples](Docs/Samples.md) section. Currently available on Windows, macOS and Linux.
-* TestFramework - A rendering framework to visualize the results of the physics engine. Used by Samples and JoltViewer. Currently available on Windows, macOS and Linux.
-* UnitTests - A set of unit tests to validate the behavior of the physics engine.
+### Core Interfaces
+- **`IPhysicsSystem`** - Main entry point for physics operations
+- **`IPhysicsWorld`** - Physics simulation world/context
+- **`IPhysicsBody`** - Rigid body representation
+- **`IShape`** - Collision shape interfaces (Box, Sphere, Capsule, Mesh, Compound)
+- **`IPhysicsFactory`** - Factory for creating physics objects
+- **`IPhysicsPlugin`** - Plugin interface for physics engines
 
-## Bindings for other languages
+## 🎯 Use Cases
 
-* C [here](https://github.com/amerkoleci/joltc), [here](https://github.com/zig-gamedev/zphysics/tree/main/libs/JoltC) and [here](https://github.com/SecondHalfGames/JoltC/)
-* [C#](https://github.com/amerkoleci/JoltPhysicsSharp)
-* [Java or Kotlin](https://stephengold.github.io/jolt-jni-docs)
-* [JavaScript](https://github.com/jrouwe/JoltPhysics.js)
-* [Rust](https://github.com/SecondHalfGames/jolt-rust)
-* [Zig](https://github.com/zig-gamedev/zphysics)
+### Game Development
+- **Multi-platform games** requiring different physics engines per platform
+- **Performance optimization** through engine selection
+- **Rapid prototyping** with engine-agnostic physics code
 
-## Integrations in other engines
+### Simulation & VR
+- **Scientific simulations** with pluggable physics backends
+- **VR applications** requiring deterministic or high-precision physics
+- **Educational tools** comparing different physics engine behaviors
 
-* [Godot](https://github.com/godot-jolt/godot-jolt)
-* [Source Engine](https://github.com/Joshua-Ashton/VPhysics-Jolt)
+### Research & Development
+- **Physics engine comparison** and benchmarking
+- **Algorithm development** with multiple backend validation
+- **Performance analysis** across different physics implementations
 
-See [a list of projects that use Jolt Physics here](Docs/ProjectsUsingJolt.md).
+## 🛠️ Building
 
-## License
+### Requirements
+- C++17 compatible compiler
+- CMake 3.20 or later
+- Git (for submodules)
 
-The project is distributed under the [MIT license](LICENSE).
+### Build Instructions
+```bash
+git clone --recursive https://github.com/nostalgiatan/Heavenly-Palace-Physics.git
+cd Heavenly-Palace-Physics
+mkdir build && cd build
+cmake ../Build
+make -j$(nproc)
+```
 
-## Contributions
+### Running Tests
+```bash
+# Basic interface tests
+./HeavenlyPalacePhysicsTest
 
-All contributions are welcome! If you intend to make larger changes, please discuss first in the GitHub Discussion section. For non-trivial changes, we require that you agree to a [Contributor Agreement](ContributorAgreement.md). When you create a PR, [CLA assistant](https://cla-assistant.io/) will prompt you to sign it.
+# Engine-specific tests
+ctest --verbose
 
-Note that all PRs will be squashed before merging, so there's no need to force-push to git to keep the history clean.
+# Performance benchmarks
+make benchmark-check-all
+```
+
+## 🤝 Contributing
+
+We welcome contributions! Whether you're:
+- Adding support for new physics engines
+- Improving the abstraction layer interfaces
+- Writing documentation and examples
+- Fixing bugs or optimizing performance
+
+### Development Workflow
+1. **Fork the repository**
+2. **Create feature branch** (`git checkout -b feature/amazing-feature`)
+3. **Make your changes** following our coding standards
+4. **Add tests** for new functionality
+5. **Update documentation** as needed
+6. **Submit pull request**
+
+### Adding New Physics Engines
+1. Implement the `IPhysicsPlugin` interface
+2. Create engine-specific implementations of core interfaces
+3. Register your plugin using `REGISTER_PHYSICS_PLUGIN`
+4. Add tests and documentation
+5. Update the supported engines list
+
+## 📊 Performance
+
+The abstraction layer is designed for minimal overhead:
+- **Virtual call overhead:** ~1-3ns per call on modern CPUs
+- **Memory overhead:** <1% additional memory usage
+- **Feature parity:** Full access to engine-specific optimizations
+
+Performance benchmarks and comparisons available in the [docs/jolt/PerformanceTest.md](docs/jolt/PerformanceTest.md).
+
+## 📜 License
+
+This project is distributed under the [MIT License](LICENSE).
+
+## 🙏 Acknowledgments
+
+- **[Jolt Physics](https://github.com/jrouwe/JoltPhysics)** by Jorrit Rouwe - Primary 3D physics backend
+- **[Box2D](https://github.com/erincatto/box2d)** by Erin Catto - 2D physics backend
+- **Physics Engine Communities** - For inspiration and technical guidance
+
+---
+
+**Heavenly Palace Physics** - Unifying the physics simulation ecosystem, one interface at a time. 🌌

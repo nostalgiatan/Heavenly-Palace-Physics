@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace HeavenlyPalace {
 
@@ -89,6 +90,34 @@ enum class PhysicsEngineType {
     Bullet,     ///< Bullet Physics (future)
     PhysX,      ///< NVIDIA PhysX (future)
     Box2D       ///< Box2D for 2D physics (future)
+};
+
+/// Plugin feature flags
+enum class PluginFeature : uint32_t {
+    SoftBodies         = 1 << 0,  ///< Soft body simulation
+    FluidSimulation    = 1 << 1,  ///< Fluid/particle simulation  
+    CharacterControl   = 1 << 2,  ///< Character controller
+    VehicleSimulation  = 1 << 3,  ///< Vehicle physics
+    ClothSimulation    = 1 << 4,  ///< Cloth simulation
+    DestructibleBodies = 1 << 5,  ///< Destructible objects
+    ContinuousCD       = 1 << 6,  ///< Continuous collision detection
+    Deterministic      = 1 << 7,  ///< Deterministic simulation
+    DoublePrecision    = 1 << 8,  ///< Double precision math
+    Multithreading     = 1 << 9,  ///< Multi-threaded simulation
+    GPU_Acceleration   = 1 << 10, ///< GPU acceleration
+    PBD_Solver         = 1 << 11  ///< Position-based dynamics solver
+};
+
+/// Plugin information structure
+struct PluginInfo {
+    std::string name;               ///< Human-readable name of the plugin
+    std::string version;            ///< Plugin version string
+    std::string description;        ///< Brief description of the plugin
+    PhysicsEngineType engineType;  ///< Engine type this plugin provides
+    std::string author;             ///< Plugin author/organization
+    uint32_t apiVersion = 1;        ///< API version this plugin was built for
+    bool isSupported = true;        ///< Whether this plugin is supported on current platform
+    uint32_t supportedFeatures = 0; ///< Bitmask of supported features
 };
 
 } // namespace HeavenlyPalace
