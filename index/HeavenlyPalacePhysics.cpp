@@ -26,7 +26,6 @@ bool IsEngineSupported(PhysicsEngineType engineType) {
 
 // PhysicsManager implementation
 std::unique_ptr<IPhysicsSystem> PhysicsManager::s_instance;
-std::unique_ptr<IPhysicsPlugin> PhysicsManager::s_currentPlugin;
 PhysicsEngineType PhysicsManager::s_currentEngineType = PhysicsEngineType::Jolt;
 bool PhysicsManager::s_pluginsInitialized = false;
 
@@ -46,22 +45,20 @@ bool PhysicsManager::CreateSystem(PhysicsEngineType engineType) {
     DestroySystem();
 
     // Create plugin instance
-    s_currentPlugin = PluginRegistry::GetInstance().CreatePlugin(engineType);
-    if (!s_currentPlugin) {
+    auto currentPlugin = PluginRegistry::GetInstance().CreatePlugin(engineType);
+    if (!currentPlugin) {
         return false;
     }
 
     // Create physics system from plugin
-    s_instance = s_currentPlugin->CreatePhysicsSystem();
+    s_instance = currentPlugin->CreatePhysicsSystem();
     if (!s_instance) {
-        s_currentPlugin.reset();
         return false;
     }
 
     // Initialize the physics system
     if (!s_instance->Initialize(engineType)) {
         s_instance.reset();
-        s_currentPlugin.reset();
         return false;
     }
 
@@ -74,7 +71,6 @@ void PhysicsManager::DestroySystem() {
         s_instance->Shutdown();
         s_instance.reset();
     }
-    s_currentPlugin.reset();
 }
 
 bool PhysicsManager::IsReady() {

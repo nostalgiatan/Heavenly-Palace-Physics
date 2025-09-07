@@ -40,25 +40,25 @@ set(HEAVENLY_PALACE_BOX2D_HEADERS
     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.h
 )
 
-# Box2D implementation sources
-set(HEAVENLY_PALACE_BOX2D_SOURCES
-    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsSystem.cpp
-    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsWorld.cpp
-    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.cpp
-    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPlugin.cpp
-)
+# Box2D implementation sources (disabled for now - no Box2D installed)
+# set(HEAVENLY_PALACE_BOX2D_SOURCES
+#     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsSystem.cpp
+#     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsWorld.cpp
+#     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPhysicsBody.cpp
+#     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Box2D/Box2DPlugin.cpp
+# )
 
-# Jolt implementation sources
-set(HEAVENLY_PALACE_JOLT_SOURCES
-    ${HEAVENLY_PALACE_PHYSICS_ROOT}/Jolt/JoltPlugin.cpp
-    # Additional Jolt implementation files would go here
-)
+# Jolt implementation sources (disabled for now - just testing interface)
+# set(HEAVENLY_PALACE_JOLT_SOURCES
+#     ${HEAVENLY_PALACE_PHYSICS_ROOT}/Jolt/JoltPlugin.cpp
+#     # Additional Jolt implementation files would go here
+# )
 
 # Add all files to the library sources
 list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_JOLT_HEADERS})
 list(APPEND HEAVENLY_PALACE_HEADERS ${HEAVENLY_PALACE_BOX2D_HEADERS})
-list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_BOX2D_SOURCES})
-list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_JOLT_SOURCES})
+# list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_BOX2D_SOURCES})  # Disabled for now
+# list(APPEND HEAVENLY_PALACE_SOURCES ${HEAVENLY_PALACE_JOLT_SOURCES})  # Disabled for now
 
 # Create interface library for headers only (until we implement the Jolt backend)
 add_library(HeavenlyPalacePhysics INTERFACE)

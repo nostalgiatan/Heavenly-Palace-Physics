@@ -9,7 +9,8 @@
 
 namespace HeavenlyPalace {
 
-struct PluginRegistry::PluginEntry {
+// Forward declaration for plugin entry
+struct PluginEntry {
     PluginCreateFunc createFunc;
     std::unique_ptr<IPhysicsPlugin> instance;
     PluginInfo info;
@@ -46,7 +47,7 @@ bool PluginRegistry::RegisterPlugin(PhysicsEngineType engineType, PluginCreateFu
         return false;
     }
 
-    PluginEntry& entry = m_impl->plugins[engineType];
+    auto& entry = m_impl->plugins[engineType];
     entry.createFunc = createFunc;
     entry.info = tempPlugin->GetPluginInfo();
     entry.instance = std::move(tempPlugin);

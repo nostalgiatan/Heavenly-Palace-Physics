@@ -3,27 +3,14 @@
 #pragma once
 
 #include "Common.h"
-#include <string>
 #include <memory>
 #include <map>
-#include <algorithm>
 #include <functional>
 
 namespace HeavenlyPalace {
 
 // Forward declarations
 class IPhysicsSystem;
-
-/// Plugin information structure
-struct PluginInfo {
-    std::string name;               ///< Human-readable name of the plugin
-    std::string version;            ///< Plugin version string
-    std::string description;        ///< Brief description of the plugin
-    PhysicsEngineType engineType;  ///< Engine type this plugin provides
-    std::string author;             ///< Plugin author/organization
-    uint32_t apiVersion;            ///< API version this plugin was built for
-    bool isSupported;               ///< Whether this plugin is supported on current platform
-};
 
 /// Abstract interface for physics engine plugins
 class IPhysicsPlugin {
@@ -54,26 +41,10 @@ public:
     virtual uint32_t GetSupportedFeatures() const = 0;
 };
 
-/// Plugin feature flags
-enum class PluginFeature : uint32_t {
-    SoftBodies         = 1 << 0,  ///< Soft body simulation
-    FluidSimulation    = 1 << 1,  ///< Fluid/particle simulation  
-    CharacterControl   = 1 << 2,  ///< Character controller
-    VehicleSimulation  = 1 << 3,  ///< Vehicle physics
-    ClothSimulation    = 1 << 4,  ///< Cloth simulation
-    DestructibleBodies = 1 << 5,  ///< Destructible objects
-    ContinuousCD       = 1 << 6,  ///< Continuous collision detection
-    Deterministic      = 1 << 7,  ///< Deterministic simulation
-    DoublePrecision    = 1 << 8,  ///< Double precision math
-    Multithreading     = 1 << 9,  ///< Multi-threaded simulation
-    GPU_Acceleration   = 1 << 10, ///< GPU acceleration
-    PBD_Solver         = 1 << 11  ///< Position-based dynamics solver
-};
-
 /// Plugin factory function type
 using PluginCreateFunc = std::function<std::unique_ptr<IPhysicsPlugin>()>;
 
-/// Plugin registration helper class
+/// Plugin registry for managing physics engine plugins
 class PluginRegistry {
 public:
     /// Get the global plugin registry instance
@@ -137,40 +108,5 @@ private:
         }; \
         static AutoRegister##PLUGIN_CLASS s_autoRegister##PLUGIN_CLASS; \
     }
-
-/// Physics engine capabilities structure for detailed feature queries
-struct EngineCapabilities {
-    bool supportsMultithreading = false;
-    bool supportsSoftBodies = false;
-    bool supportsContinuousCD = false;
-    bool supportsDeterministic = false;
-    bool supportsGPUAcceleration = false;
-    bool supportsDoublePrecision = false;
-    uint32_t maxBodies = 0;           ///< Maximum number of bodies (0 = unlimited)
-    uint32_t maxConstraints = 0;      ///< Maximum number of constraints (0 = unlimited)
-    float minTimeStep = 0.0f;         ///< Minimum simulation time step
-    float maxTimeStep = 0.0f;         ///< Maximum simulation time step
-    std::string platformRequirements; ///< Platform-specific requirements
-};
-
-/// Extended plugin interface for advanced features
-class IAdvancedPhysicsPlugin : public IPhysicsPlugin {
-public:
-    /// Get detailed engine capabilities
-    /// @return Engine capabilities structure
-    virtual const EngineCapabilities& GetCapabilities() const = 0;
-
-    /// Check if a specific feature combination is supported
-    /// @param features Bitmask of features to check
-    /// @return True if all features are supported
-    virtual bool SupportsFeatureCombination(uint32_t features) const = 0;
-
-    /// Get recommended settings for optimal performance
-    /// @param bodyCount Expected number of bodies
-    /// @param constraintCount Expected number of constraints
-    /// @return Recommended configuration settings as key-value pairs
-    virtual std::map<std::string, std::string> GetRecommendedSettings(
-        uint32_t bodyCount, uint32_t constraintCount) const = 0;
-};
 
 } // namespace HeavenlyPalace

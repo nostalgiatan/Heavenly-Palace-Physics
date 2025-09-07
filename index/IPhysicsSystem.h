@@ -16,52 +16,6 @@ class ISphereShape;
 class ICapsuleShape;
 class IMeshShape;
 class ICompoundShape;
-struct PluginInfo;
-class IPhysicsPlugin;
-
-/// Factory for creating physics objects
-/// This provides a unified way to create physics objects regardless of the underlying engine
-class IPhysicsFactory {
-public:
-    virtual ~IPhysicsFactory() = default;
-
-    /// Create a physics world
-    /// @return New physics world instance
-    virtual std::shared_ptr<IPhysicsWorld> CreatePhysicsWorld() = 0;
-
-    /// Create a box shape
-    /// @param halfExtents Half extents of the box (half width, half height, half depth)
-    /// @return New box shape instance
-    virtual std::shared_ptr<IBoxShape> CreateBoxShape(const Vec3& halfExtents) = 0;
-
-    /// Create a sphere shape
-    /// @param radius Radius of the sphere
-    /// @return New sphere shape instance
-    virtual std::shared_ptr<ISphereShape> CreateSphereShape(float radius) = 0;
-
-    /// Create a capsule shape
-    /// @param radius Radius of the capsule
-    /// @param height Height of the cylindrical part (excluding caps)
-    /// @return New capsule shape instance
-    virtual std::shared_ptr<ICapsuleShape> CreateCapsuleShape(float radius, float height) = 0;
-
-    /// Create a mesh shape from vertices and indices
-    /// @param vertices Array of vertex positions
-    /// @param vertexCount Number of vertices
-    /// @param indices Array of triangle indices (3 per triangle)
-    /// @param indexCount Number of indices
-    /// @return New mesh shape instance
-    virtual std::shared_ptr<IMeshShape> CreateMeshShape(const Vec3* vertices, uint32_t vertexCount,
-                                                        const uint32_t* indices, uint32_t indexCount) = 0;
-
-    /// Create a compound shape
-    /// @return New compound shape instance
-    virtual std::shared_ptr<ICompoundShape> CreateCompoundShape() = 0;
-
-    /// Get the physics engine type this factory creates
-    /// @return Physics engine type
-    virtual PhysicsEngineType GetEngineType() const = 0;
-};
 
 /// Factory for creating physics objects
 /// This provides a unified way to create physics objects regardless of the underlying engine
@@ -199,7 +153,6 @@ public:
 
 private:
     static std::unique_ptr<IPhysicsSystem> s_instance;
-    static std::unique_ptr<IPhysicsPlugin> s_currentPlugin;
     static PhysicsEngineType s_currentEngineType;
     static bool s_pluginsInitialized;
 };
