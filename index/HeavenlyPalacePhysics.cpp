@@ -15,11 +15,11 @@ const char* GetVersionString() {
 }
 
 const PhysicsEngineType* GetSupportedEngines(uint32_t& count) {
-    static const std::array<PhysicsEngineType, 1> supportedEngines = {
-        PhysicsEngineType::Jolt
+    static const std::array<PhysicsEngineType, 2> supportedEngines = {
+        PhysicsEngineType::Jolt,
+        PhysicsEngineType::Box2D
         // PhysicsEngineType::Bullet,  // Future support
         // PhysicsEngineType::PhysX,   // Future support
-        // PhysicsEngineType::Box2D    // Future support
     };
     
     count = static_cast<uint32_t>(supportedEngines.size());
