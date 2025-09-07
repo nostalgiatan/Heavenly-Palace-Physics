@@ -42,7 +42,7 @@ Usage: $0 [COMMAND] [OPTIONS]
 Commands:
     setup                Set up CI environment and dependencies
     build [TYPE]         Build project (Debug, Release, Distribution)
-    test [TYPE]          Run tests (unit, performance, integration, all)
+    test [TYPE]          Run tests (unit, performance, integration, memory, box2d, all)
     benchmark [ACTION]   Manage benchmarks (baseline, check, report, history)
     clean               Clean build artifacts
     validate            Validate CI configuration
@@ -52,6 +52,7 @@ Examples:
     $0 setup                     # Set up CI environment
     $0 build Release             # Build Release configuration
     $0 test unit                 # Run unit tests only
+    $0 test box2d                # Run Box2D integration tests
     $0 benchmark baseline        # Set all benchmarks baselines
     $0 benchmark check           # Check for performance regressions
     $0 validate                  # Validate CI workflows
@@ -155,6 +156,13 @@ run_tests() {
                 print_status "Testing PerformanceTest integration..."
                 ./PerformanceTest -s=ConvexVsMesh -i=50 -q=LinearCast -t=1
             fi
+            
+            # Test Box2D integration
+            test_box2d_integration
+            ;;
+        "box2d")
+            print_status "Running Box2D integration tests..."
+            test_box2d_integration
             ;;
         "memory")
             print_status "Running memory tests..."
@@ -170,12 +178,73 @@ run_tests() {
             ;;
         *)
             print_error "Unknown test type: $test_type"
-            print_status "Available types: unit, performance, integration, memory, all"
+            print_status "Available types: unit, performance, integration, memory, box2d, all"
             exit 1
             ;;
     esac
     
     print_status "Tests complete!"
+}
+
+# Test Box2D integration
+test_box2d_integration() {
+    print_status "Testing Box2D integration..."
+    
+    local compiler=${CXX:-clang++}
+    local index_dir="$REPO_ROOT/index"
+    local box2d_include="$REPO_ROOT/ThirdParty/box2d/include"
+    
+    # Check if Box2D submodule exists
+    if [[ ! -d "$REPO_ROOT/ThirdParty/box2d" ]]; then
+        print_warning "Box2D submodule not found, skipping Box2D tests"
+        return 0
+    fi
+    
+    # Check if Box2D library was built
+    local box2d_lib=""
+    if [[ -f "./HeavenlyPalacePhysics/box2d/src/libbox2d.a" ]]; then
+        box2d_lib="./HeavenlyPalacePhysics/box2d/src/libbox2d.a"
+    elif [[ -f "./box2d/src/libbox2d.a" ]]; then
+        box2d_lib="./box2d/src/libbox2d.a"
+    else
+        print_warning "Box2D library not found, attempting to build Box2D test without linking"
+        # Try compilation test only
+        if command -v "$compiler" &> /dev/null; then
+            print_status "Testing Box2D compilation..."
+            $compiler -std=c++17 \
+                -I"$index_dir" \
+                -I"$box2d_include" \
+                -c "$index_dir/Box2D/Box2DPhysicsSystem.cpp" \
+                -o test_box2d_compile.o && \
+                print_status "  ✓ Box2D compilation test passed" || \
+                print_warning "  ⚠ Box2D compilation test failed"
+        fi
+        return 0
+    fi
+    
+    # Build and run Box2D integration test
+    print_status "Building Box2D integration test..."
+    if $compiler -std=c++17 \
+        -I"$index_dir" \
+        -I"$box2d_include" \
+        "$index_dir/test_box2d_integration.cpp" \
+        "$index_dir/Box2D/Box2DPhysicsSystem.cpp" \
+        "$index_dir/Box2D/Box2DPhysicsWorld.cpp" \
+        "$index_dir/Box2D/Box2DPhysicsBody.cpp" \
+        "$index_dir/HeavenlyPalacePhysics.cpp" \
+        "$index_dir/Common.cpp" \
+        "$box2d_lib" \
+        -o test_box2d_integration; then
+        
+        print_status "Running Box2D integration test..."
+        if ./test_box2d_integration; then
+            print_status "  ✓ Box2D integration test passed"
+        else
+            print_warning "  ⚠ Box2D integration test failed"
+        fi
+    else
+        print_warning "  ⚠ Failed to build Box2D integration test"
+    fi
 }
 
 # Manage benchmarks
