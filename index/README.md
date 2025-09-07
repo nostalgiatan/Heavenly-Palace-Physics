@@ -1,84 +1,140 @@
-# Jolt Physics Engine API Index
+# Heavenly Palace Physics - Universal Physics Engine Abstraction
 
-This directory provides a comprehensive index and documentation for all interfaces, classes, and APIs in the Jolt Physics Engine. It's designed to help developers quickly find and understand the components they need for their physics simulations.
+This directory contains the Heavenly Palace Physics abstraction layer, which provides a unified interface for working with different physics engines while maintaining the same API.
 
-## Quick Navigation
+## Overview
 
-- [Core APIs](core/README.md) - Memory management, job systems, utilities
-- [Physics System](physics/README.md) - Main physics simulation and world management
-- [Bodies & Shapes](bodies/README.md) - Rigid bodies, shapes, and collision geometry
-- [Constraints](constraints/README.md) - Joints and constraint systems
-- [Collision Detection](collision/README.md) - Broad and narrow phase collision
-- [Math & Geometry](math/README.md) - Vector math, matrices, and geometric utilities
-- [Character Control](character/README.md) - Character controller APIs
-- [Vehicles](vehicles/README.md) - Vehicle simulation system
-- [Soft Bodies](softbody/README.md) - Soft body physics
-- [Utilities](utilities/README.md) - Helper classes and tools
+The abstraction layer serves as a bridge between your application and various physics engines, starting with Jolt Physics and designed to support additional engines in the future (Bullet Physics, NVIDIA PhysX, Box2D, etc.).
 
-## API Overview
+## Architecture
 
-The Jolt Physics Engine contains **212 exported classes** across **291 header files**, organized into the following main categories:
+### Core Interfaces
 
-### Core Components
-- **PhysicsSystem** - Main physics world and simulation controller
-- **BodyInterface** - Interface for creating and managing rigid bodies
-- **JobSystem** - Multi-threaded job execution system
-- **Factory** - Object creation and type registration
+- **`IPhysicsSystem`** - Main entry point for physics operations
+- **`IPhysicsWorld`** - Physics simulation world/context
+- **`IPhysicsBody`** - Rigid body representation
+- **`IShape`** - Collision shape interfaces (Box, Sphere, Capsule, Mesh, Compound)
+- **`IPhysicsFactory`** - Factory for creating physics objects
 
-### Shape System
-- **Shape** - Base class for all collision shapes
-- **ConvexShape** - Base for convex collision shapes (Box, Sphere, Capsule, etc.)
-- **CompoundShape** - Container for multiple shapes
-- **MeshShape** - Triangle mesh collision shapes
+### Design Principles
 
-### Constraint System
-- **Constraint** - Base class for all constraints
-- **TwoBodyConstraint** - Constraints between two bodies
-- **ConstraintManager** - Manages all constraints in the system
+1. **Engine Independence** - Write code once, switch physics engines easily
+2. **Minimal Overhead** - Thin abstraction layer with minimal performance impact  
+3. **Type Safety** - Strong typing and clear interfaces
+4. **Future Extensibility** - Easy to add new physics engines
+5. **Jolt Compatibility** - Full access to Jolt's advanced features when needed
 
-### Collision Detection
-- **BroadPhase** - Broad phase collision detection
-- **NarrowPhaseQuery** - Detailed collision queries
-- **CollisionCollector** - Results collection for collision queries
+## Quick Start
 
-## Getting Started
+```cpp
+#include "HeavenlyPalacePhysics.h"
+using namespace HeavenlyPalace;
 
-1. **Quick Start**: Follow the [Quick Start Guide](quick-start.md) for a complete working example
-2. **API Lookup**: Use the [Interface Map](interface-map.md) to find any class quickly
-3. **Complete Reference**: Browse the [Complete API Reference](api-reference.md)
-4. **Category Guides**: Explore specific topics in the category sections below
+// Initialize physics system with Jolt engine
+if (!PhysicsManager::CreateSystem(PhysicsEngineType::Jolt)) {
+    return false; // Handle initialization error
+}
 
-## Interface Categories
+// Get factory and create world
+auto factory = PhysicsManager::GetInstance().GetFactory();
+auto world = factory->CreatePhysicsWorld();
+world->Initialize(1024, 1024, 1024);
+world->SetGravity(Vec3(0, -9.81f, 0));
+PhysicsManager::GetInstance().SetWorld(world);
 
-### By Functionality
-- **Core Infrastructure** - JobSystem, Memory, Factory, RTTI
-- **Physics Simulation** - PhysicsSystem, Bodies, Constraints
-- **Collision System** - Shapes, BroadPhase, NarrowPhase
-- **Character & Vehicle** - Specialized simulation systems
-- **Utilities** - Math, Geometry, Debugging tools
+// Create a falling box
+auto boxShape = factory->CreateBoxShape(Vec3(1, 1, 1)); // 2x2x2 meter box
+BodyCreationSettings settings;
+settings.position = Vec3(0, 10, 0); // 10 meters high
+settings.mass = 1.0f; // 1 kg
+auto body = world->CreateBody(settings);
+body->SetShape(boxShape);
 
-### By Usage Pattern
-- **Essential APIs** - Must-know interfaces for basic usage
-- **Advanced APIs** - Specialized functionality for advanced users
-- **Internal APIs** - Implementation details (use with caution)
-- **Utility APIs** - Helper classes and convenience functions
+// Simulation loop
+while (running) {
+    world->Update(1.0f / 60.0f); // 60 FPS
+    
+    // Get body position for rendering
+    Vec3 position = body->GetPosition();
+    // ... render at position
+}
 
-## Documentation Standards
+// Cleanup
+PhysicsManager::DestroySystem();
+```
 
-Each interface is documented with:
-- **Purpose** - What the interface does
-- **Key Methods** - Most important functions
-- **Usage Examples** - Code snippets showing typical usage
-- **Related APIs** - Cross-references to related interfaces
-- **Best Practices** - Recommended usage patterns
+## Current Implementation Status
 
-## Completeness Guarantee
+### ✅ Completed
+- Core interface definitions
+- Math utilities (Vec3, Quaternion, AABB)
+- Type-safe enums and structures
+- Jolt Physics engine integration architecture
+- CMake build system integration
+- Interface compilation testing
 
-This index covers **ALL** public interfaces in Jolt Physics Engine:
-- ✅ All 212 exported classes documented
-- ✅ All 291 header files categorized
-- ✅ Cross-references maintained
-- ✅ Examples provided for major APIs
-- ✅ Best practices documented
+### 🚧 In Progress  
+- Jolt Physics concrete implementations
+- Shape creation and management
+- Physics world simulation
+- Body creation and manipulation
 
-Last updated: [Generated from repository scan]
+### 📋 Planned
+- Complete Jolt Physics implementation
+- Raycast and collision queries
+- Constraint/joint system
+- Character controller
+- Performance optimization
+- Additional physics engines (Bullet, PhysX)
+
+## Directory Structure
+
+```
+index/
+├── HeavenlyPalacePhysics.h    # Main include header
+├── Common.h                   # Common types and utilities
+├── IPhysicsSystem.h           # System and factory interfaces
+├── IPhysicsWorld.h            # Physics world interface
+├── IPhysicsBody.h             # Rigid body interface
+├── IShape.h                   # Shape interfaces
+├── Jolt/                      # Jolt Physics implementation
+│   ├── JoltPhysicsSystem.h    # Jolt system implementation
+│   ├── JoltPhysicsWorld.h     # Jolt world implementation
+│   └── JoltPhysicsBody.h      # Jolt body implementation
+├── CMakeLists.txt             # Build configuration
+└── test_interface.cpp         # Interface validation test
+```
+
+## Benefits
+
+1. **Consistency** - Same API regardless of underlying physics engine
+2. **Flexibility** - Switch engines based on platform, performance, or feature requirements
+3. **Maintainability** - Centralized physics code that's easier to maintain
+4. **Testing** - Easy to mock physics for unit testing
+5. **Learning** - Single API to learn instead of multiple engine-specific APIs
+
+## Integration
+
+The abstraction layer is designed to integrate seamlessly with the existing Jolt Physics Engine while providing a path forward for multi-engine support.
+
+### CMake Integration
+
+Add to your CMakeLists.txt:
+```cmake
+add_subdirectory(index)
+target_link_libraries(your_target PRIVATE HeavenlyPalacePhysics)
+```
+
+### Documentation
+
+API documentation has been moved to `docs/api/` to maintain separation between interface code and documentation.
+
+## Contributing
+
+When adding new features:
+1. Update the abstract interfaces first
+2. Implement in Jolt backend
+3. Add tests to verify functionality
+4. Update documentation
+
+This ensures consistency across all current and future physics engine implementations.

@@ -310,6 +310,9 @@ if (XCODE)
 	set_property(TARGET Jolt PROPERTY XCODE_ATTRIBUTE_OTHER_CPLUSPLUSFLAGS[arch=x86_64] "$(inherited) -msse4.2 -mpopcnt")
 endif()
 
+# Add Heavenly Palace Physics abstraction layer
+add_subdirectory(${PHYSICS_REPO_ROOT}/index HeavenlyPalacePhysics)
+
 # Install Jolt library and includes
 if (ENABLE_INSTALL)
 	include(GNUInstallDirs)
